@@ -4,6 +4,8 @@ from PIL import Image,ImageTk
 from tkinter import messagebox
 import mysql.connector
 import cv2
+import re
+import os
 
 
 class Student:
@@ -89,7 +91,7 @@ class Student:
         dep_label.grid(row=0,column=0,padx=10,sticky=W)
 
         dep_combo=ttk.Combobox(current_course_frame,textvariable=self.var_dep,font=("times new roman",12,"bold"),width=17,state="readonly")
-        dep_combo["values"]=("Select Department","Computer","IT","Civil","Mechanical")
+        dep_combo["values"]=("Select Department","Computer","IT","Civil","Mechanical","Not Applicable")
         dep_combo.current(0)
         dep_combo.grid(row=0,column=1,padx=2,pady=10,sticky=W)
 
@@ -447,7 +449,7 @@ class Student:
                 conn.commit()
                 self.fetch_data()
                 conn.close()
-                messagebox.showinfo("Delete","Successfully deleted Student Details!!",parent=root)
+                messagebox.showinfo("Delete","Successfully deleted Student Details!!",parent=self.root)
             except Exception as es:
                 messagebox.showerror("Error",f"Due To:{str(es)}",parent=self.root)      
 
@@ -471,20 +473,24 @@ class Student:
 
 
     #==========GENERATE DATA SET TAKE PHOTO SAMPLES========================
-    #==========GENERATE DATA SET TAKE PHOTO SAMPLES========================
     def generate_dataset(self):
-        if self.var_dep.get()=="Select Department" or self.var_std_name.get()=="" or self.var_std_id.get()=="":
-            messagebox.showerror("Error","All Fields Are Required",parent=self.root)
-        else:
-            try:
-                conn=mysql.connector.connect(host="localhost",username="root",password="02cheeku__pari07",database="face_recognizer")
-                my_cursor=conn.cursor()
-                my_cursor.execute("SELECT * FROM student")
-                myresult=my_cursor.fetchall()
-                id=0
-                for x in myresult:
-                    id+=1
-                my_cursor.execute("update student set Dep= %s,Course=%s,Year=%s,Semester=%s,Name=%s,Section=%s,Roll=%s,Gender=%s,Dob=%s,Email=%s,Phone=%s,Address=%s,Teacher=%s,PhotoSample=%s where Student_id=%s",(
+            if self.var_dep.get() == "Select Department" or self.var_std_name.get() == "" or self.var_std_id.get() == "":
+                messagebox.showerror("Error", "All Fields Are Required", parent=self.root)
+            else:
+                try:
+                    conn = mysql.connector.connect(
+                        host="localhost",
+                        username="root",
+                        password="02cheeku__pari07",
+                        database="face_recognizer"
+                    )
+                    my_cursor = conn.cursor()
+
+                    # Assuming `Student_id` is unique and auto-incremented
+                    student_id = self.var_std_id.get()
+
+                    # Update student details in the database
+                    my_cursor.execute("update student set Dep= %s,Course=%s,Year=%s,Semester=%s,Name=%s,Section=%s,Roll=%s,Gender=%s,Dob=%s,Email=%s,Phone=%s,Address=%s,Teacher=%s,PhotoSample=%s where Student_id=%s",(
                                                                                                                                                                                                                     self.var_dep.get(),
                                                                                                                                                                                                                     self.var_course.get(),
                                                                                                                                                                                                                     self.var_year.get(),
@@ -499,55 +505,72 @@ class Student:
                                                                                                                                                                                                                     self.var_address.get(),
                                                                                                                                                                                                                     self.var_teacher.get(),
                                                                                                                                                                                                                     self.var_radio1.get(),
-                                                                                                                                                                                                                    self.var_std_id.get()==id+1
+                                                                                                                                                                                                                   student_id
                                                                                                                                                                                                                 ))
-                conn.commit()
-                self.fetch_data()
-                self.reset_data()
-                conn.close()
 
+                    conn.commit()
+                    self.fetch_data()
+                    conn.close()
+        
+                    # ============LOAD PREDEFINED DATA ON FACE FRONTALS FROM OPENCV=========
+                    face_classifier = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
 
-                #============LOAD PREDEFINED DATA ON FACE FRONTALS FROM OPENCV=========
+                    def face_cropped(img):
+                        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                        faces = face_classifier.detectMultiScale(gray, 1.3, 5)
 
-                face_classifier=cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
+                        for (x, y, w, h) in faces:
+                            face_cropped = img[y:y + h, x:x + w]
+                            return face_cropped
 
-                def face_cropped(img):
-                    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                    faces = face_classifier.detectMultiScale(gray, 1.3, 5)
+                        # If no faces were detected, return None
+                        return None
+
+                    # Get the next available image ID by checking the existing files
+                    def get_next_img_id(user_id):
+                        img_files = os.listdir("data")
+                        pattern = re.compile(f"user.{user_id}.(\\d+).jpg")
+                        existing_ids = [int(pattern.match(f).group(1)) for f in img_files if pattern.match(f)]
+                        if existing_ids:
+                            return max(existing_ids) + 1
+                        else:
+                            return 1
+
+                    cap = cv2.VideoCapture(0)
+                    img_id = get_next_img_id(student_id)
+
+                    face_detected = False  # Variable to track if any face was detected
+
+                    while True:
+                        ret, my_frame = cap.read()
+
+                        if not ret:
+                            break
+
+                        cropped_face = face_cropped(my_frame)
+                        if cropped_face is not None:
+                            face_detected = True
+                            face = cv2.resize(cropped_face, (450, 450))
+                            face = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
+                            file_name_path = f"data/user.{student_id}.{img_id}.jpg"
+                            cv2.imwrite(file_name_path, face)
+                            cv2.putText(face, str(img_id), (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 0), 2)
+                            cv2.imshow("Cropped Face", face)
+                            img_id += 1
+
+                        if cv2.waitKey(1) == 13 or img_id > 100:
+                           break
+
+                    cap.release()
+                    cv2.destroyAllWindows()
+
+                    if face_detected:
+                        messagebox.showinfo("Result", "Generating Sets Completed!!!", parent=self.root)
+                    else:
+                        messagebox.showwarning("Warning", "No face detected!", parent=self.root)
                     
-                    for (x, y, w, h) in faces:
-                        face_cropped = img[y:y+h, x:x+w]
-                        return face_cropped
-                    
-                    # If no faces were detected, return None
-                    return None
-
-                cap = cv2.VideoCapture(0)
-                img_id = 0
-
-                while True:
-                    ret, my_frame = cap.read()
-                    
-                    cropped_face = face_cropped(my_frame)
-                    if cropped_face is not None:
-                        img_id += 1
-                        face = cv2.resize(cropped_face, (450, 450))
-                        face = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
-                        file_name_path = f"data/user."+str(id)+"."+str(img_id)+".jpg"
-                        cv2.imwrite(file_name_path, face)
-                        cv2.putText(face, str(img_id), (50, 50), cv2.FONT_HERSHEY_COMPLEX, 2, (0, 255, 0), 2)
-                        cv2.imshow("Cropped Face", face)
-
-                    if cv2.waitKey(1) == 13 or int(img_id) == 100:
-                        break
-
-                cap.release()
-                cv2.destroyAllWindows()
-                messagebox.showinfo("Result","Generating Sets Completed!!!",parent=self.root)
-            except Exception as es:
-                messagebox.showerror("Error",f"Due To:{str(es)}",parent=self.root)
-
-
+                except Exception as es:
+                    messagebox.showerror("Error", f"Due To: {str(es)}", parent=self.root)
 
 
 if __name__=="__main__":

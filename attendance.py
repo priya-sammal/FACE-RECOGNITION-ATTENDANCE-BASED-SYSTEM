@@ -221,17 +221,22 @@ class Attendance:
         except Exception as es:
                 messagebox.showerror("Error",f"Due To:{str(es)}",parent=self.root)
 
-    def get_cursor(self,event=""):
-        cursor_row=self.AttendanceReportTable.focus()
-        content=self.AttendanceReportTable.item(cursor_row)
-        rows=content['values']
-        self.var_atten_id.set(rows[0])
-        self.var_atten_roll.set(rows[1])
-        self.var_atten_name.set(rows[2])
-        self.var_atten_dep.set(rows[3])
-        self.var_atten_time.set(rows[4])
-        self.var_atten_date.set(rows[5])
-        self.var_atten_attendance.set(rows[6])
+    def get_cursor(self, event=""):
+        cursor_row = self.AttendanceReportTable.focus()
+        content = self.AttendanceReportTable.item(cursor_row)
+        rows = content['values']
+        
+        if len(rows) == 7:  # Ensure there are exactly 7 elements in the list
+            self.var_atten_id.set(rows[0])
+            self.var_atten_roll.set(rows[1])
+            self.var_atten_name.set(rows[2])
+            self.var_atten_dep.set(rows[3])
+            self.var_atten_time.set(rows[4])
+            self.var_atten_date.set(rows[5])
+            self.var_atten_attendance.set(rows[6])
+        else:
+            messagebox.showwarning("Data Error", "Selected row does not contain the correct number of columns.")
+
 
     def reset_data(self):
         self.var_atten_id.set("")
