@@ -1,11 +1,9 @@
-from tkinter import *
+import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 from tkinter import messagebox
 import mysql.connector
-from time import strftime
 from datetime import datetime
-from datetime import datetime, timedelta
 import cv2
 import os
 import numpy as np
@@ -16,7 +14,7 @@ class Face_recognition:
         self.root.geometry("1530x790+0+0")
         self.root.title("Face Recognition Attendance System")
 
-        title_lbl = Label(self.root, text="FACE RECOGNITION", font=("times new roman", 35, "bold"), bg="green", fg="white")
+        title_lbl = tk.Label(self.root, text="FACE RECOGNITION", font=("times new roman", 35, "bold"), bg="green", fg="white")
         title_lbl.place(x=0, y=0, width=1530, height=45)
 
         #=======FIRST IMAGE==============
@@ -24,7 +22,7 @@ class Face_recognition:
         img_top = img_top.resize((650, 700), Image.Resampling.LANCZOS)
         self.photoimg_top = ImageTk.PhotoImage(img_top)
 
-        f_lbl = Label(self.root, image=self.photoimg_top)
+        f_lbl = tk.Label(self.root, image=self.photoimg_top)
         f_lbl.place(x=0, y=55, width=650, height=700)
 
         #========SECOND IMAGE============
@@ -32,11 +30,11 @@ class Face_recognition:
         img_bottom = img_bottom.resize((950, 700), Image.Resampling.LANCZOS)
         self.photoimg_bottom = ImageTk.PhotoImage(img_bottom)
 
-        f_lbl = Label(self.root, image=self.photoimg_bottom)
+        f_lbl = tk.Label(self.root, image=self.photoimg_bottom)
         f_lbl.place(x=650, y=55, width=950, height=700)
 
         #=========BUTTON==============
-        b1_1 = Button(f_lbl, text="Face Recognition", cursor="hand2", command=self.face_recog, font=("times new roman", 18, "bold"), bg="lightgreen", fg="green")
+        b1_1 = tk.Button(f_lbl, text="Face Recognition", cursor="hand2", command=self.face_recog, font=("times new roman", 18, "bold"), bg="lightgreen", fg="green")
         b1_1.place(x=380, y=620, width=200, height=40)
 
     #============ATTENDANCE===========================
@@ -62,12 +60,16 @@ class Face_recognition:
                 id, predict = clf.predict(gray_image[y:y + h, x:x + w])
                 confidence = int((100 * (1 - predict / 300)))
 
-                if confidence > 70:
+                print(f"ID: {id}, Predict: {predict}, Confidence: {confidence}%")
+
+                if confidence > 60:  # Lowered the threshold for testing
                     conn = mysql.connector.connect(host="localhost", username="root", password="02cheeku__pari07", database="face_recognizer")
                     my_cursor = conn.cursor()
 
                     my_cursor.execute("SELECT Student_id, Name, Roll, Dep FROM student WHERE Student_id=%s", (id,))
                     result = my_cursor.fetchone()
+                    conn.close()
+
                     if result:
                         i, n, r, d = result
                         buffer.append((i, r, n, d))
@@ -79,7 +81,10 @@ class Face_recognition:
                             cv2.putText(img, f"Name:{n}", (x, y - 30), cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 3)
                             cv2.putText(img, f"Department:{d}", (x, y - 5), cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 3)
                             self.mark_attendance(i, r, n, d)
+                        else:
+                            print("Buffer not consistent or not filled yet.")
                     else:
+                        print("Student ID not found in database.")
                         cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 3)
                         cv2.putText(img, "Unknown Face", (x, y - 5), cv2.FONT_HERSHEY_COMPLEX, 0.8, (255, 255, 255), 3)
                 coord = [x, y, w, h]
@@ -107,6 +112,6 @@ class Face_recognition:
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    root = Tk()
+    root = tk.Tk()
     obj = Face_recognition(root)
     root.mainloop()
