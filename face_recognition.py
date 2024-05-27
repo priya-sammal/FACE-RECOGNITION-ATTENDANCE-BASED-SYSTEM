@@ -57,12 +57,8 @@ class Face_recognition:
 
             for (x, y, w, h) in features:
                 cv2.rectangle(img, (x, y), (x + w, y + h), color, 3)
-                id, predict = clf.predict(gray_image[y:y + h, x:x + w])
-                confidence = int((100 * (1 - predict / 300)))
-
-                print(f"ID: {id}, Predict: {predict}, Confidence: {confidence}%")
-
-                if confidence > 60:  # Lowered the threshold for testing
+                id, predict = clf.predict(gray_image)
+                if cv2.CAP_PROP_INTELPERC_DEPTH_CONFIDENCE_THRESHOLD > 60:  # Lowered the threshold for testing
                     conn = mysql.connector.connect(host="localhost", username="root", password="02cheeku__pari07", database="face_recognizer")
                     my_cursor = conn.cursor()
 
@@ -110,6 +106,7 @@ class Face_recognition:
                 break
         video_cap.release()
         cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     root = tk.Tk()

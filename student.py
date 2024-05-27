@@ -6,6 +6,7 @@ import mysql.connector
 import cv2
 import re
 import os
+import xml.etree.ElementTree as ET
 
 
 class Student:
@@ -451,7 +452,7 @@ class Student:
                 conn.close()
                 messagebox.showinfo("Delete","Successfully deleted Student Details!!",parent=self.root)
             except Exception as es:
-                messagebox.showerror("Error",f"Due To:{str(es)}",parent=self.root)      
+                messagebox.showerror("Error",f"Due To:{str(es)}",parent=self.root)     
 
     #============RESET FUNCTION==================
     def reset_data(self):
