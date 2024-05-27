@@ -58,13 +58,19 @@ class Face_recognition:
             for (x, y, w, h) in features:
                 cv2.rectangle(img, (x, y), (x + w, y + h), color, 3)
                 id, predict = clf.predict(gray_image)
-                if cv2.CAP_PROP_INTELPERC_DEPTH_CONFIDENCE_THRESHOLD > 60:  # Lowered the threshold for testing
+                confidence = int(100 * (1 - predict / 300))
+
+                print(f"Detected ID: {id}, Confidence: {confidence}")  # Debugging statement
+
+                if confidence > 60:  # Adjusted confidence threshold
                     conn = mysql.connector.connect(host="localhost", username="root", password="02cheeku__pari07", database="face_recognizer")
                     my_cursor = conn.cursor()
 
                     my_cursor.execute("SELECT Student_id, Name, Roll, Dep FROM student WHERE Student_id=%s", (id,))
                     result = my_cursor.fetchone()
                     conn.close()
+
+                    print(f"Database result: {result}")  # Debugging statement
 
                     if result:
                         i, n, r, d = result
